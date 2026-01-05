@@ -1,0 +1,2 @@
+[console_scripts]
+plotsr = plotsr.scripts.plotsr:main
