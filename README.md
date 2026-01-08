@@ -42,7 +42,7 @@ The pipelines rely on standard bioinformatics tools and Python/R environments.
 
 **Core Tools:**
 *   `samtools`, `bcftools`, `bedtools`
-*   `minimap2`, `Winnowmap`
+*   `minimap2`
 *   `modkit` (Nanopore methylation)
 *   `Sniffles2` (Structural Variants)
 
@@ -58,8 +58,8 @@ install.packages(c("ape", "vegan", "pheatmap", "dendextend", "RColorBrewer"))
 ---
 
 ## 💾 Data Availability
-*  **Raw Sequencing Data:** Available at the European Nucleotide Archive (ENA) under project PRJEBXXXX.
-*  **Assembly & Annotations:** The phased diploid assembly (PN_1 and PN_2) and GFF3 files are available at [Zenodo/NCBI Link].
+*  **Raw Sequencing Data:** Available at the European Nucleotide Archive (ENA) under project PRJEB106155.
+*  **Assembly & Annotations:** The phased diploid assembly (PN_1 and PN_2) and GFF3 files are available at https://zenodo.org/records/18154549.
 *  **Modified PlotSR:** The custom visualization tool used for Figure 2 is included in 1_Assembly_Evaluation/plotsr_modified.
 
 ---
