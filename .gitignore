@@ -1,0 +1,15 @@
+# Windows zone identifier files
+*:Zone.Identifier
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Log files
+*.log
+
+# Editor temp files
+*.save
+*.swp
+.DS_Store

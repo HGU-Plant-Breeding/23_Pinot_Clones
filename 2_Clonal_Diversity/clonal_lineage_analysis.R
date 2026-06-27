@@ -39,11 +39,11 @@ WORKING_DIR <- "."  # Change this if running interactively
 INPUT_DIR   <- "Distance_Matrix" # Subdirectory containing input tables
 
 # Input Filenames
-FILE_SNP <- file.path(INPUT_DIR, "GT_snp.tsv")
-FILE_CG  <- file.path(INPUT_DIR, "CG_SMP_final.txt")
-FILE_SV  <- file.path(INPUT_DIR, "GT_sv.tsv")
-FILE_CHG <- file.path(INPUT_DIR, "GT_dmc_CHG.tsv")
-FILE_CHH <- file.path(INPUT_DIR, "GT_dmc_CHH.tsv")
+FILE_SNP <- file.path(INPUT_DIR, "")
+FILE_CG  <- file.path(INPUT_DIR, "")
+FILE_SV  <- file.path(INPUT_DIR, "")
+FILE_CHG <- file.path(INPUT_DIR, "")
+FILE_CHH <- file.path(INPUT_DIR, "")
 FILE_GROUPS <- file.path(INPUT_DIR, "clonal_groups.txt")
 
 # Set Working Directory

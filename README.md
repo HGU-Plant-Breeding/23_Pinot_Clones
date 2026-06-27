@@ -1,68 +1,63 @@
-# A Dual Genomic-Epigenomic Map of Clonal Evolution in Grapevine
+# A Dual Genome-Methylome Map of Clonal Evolution in Grapevine
 
-**Author:** Paolo Callipo  
+**Authors:** Paolo Callipo, Hannah Robinson, Maximilian Schmidt, Kai P. Voss-Fels  
 **Department of Plant Breeding, Hochschule Geisenheim University**
 
 ---
 
-## 🍇 Abstract
+## Abstract
 
-This repository contains the custom code and analysis pipelines developed for the study **"A dual genomic-epigenomic map of clonal evolution in grapevine"**.
-
----
-
-## 📂 Repository Structure
-
-The analysis is partitioned into three main directories, following the logical flow of the manuscript. Each directory contains a detailed `README` explaining the specific scripts.
-
-### 1. [Genome Assembly & Evaluation](./1_Genome_Assembly)
-Scripts for characterizing the diploid reference genome structure.
-*   **Structural Variation:** `SyRI` classification and `PlotSR` visualization.
-*   **Composition:** Partitioning the genome into Hemizygous, Heterozygous, and Homozygous regions.
-*   **Evolutionary History:** TE divergence/age estimation and Orthology analysis.
-
-### 2. [Clonal Diversity Analysis](./2_Clonal_Diversity)
-The pipeline for characterizing somatic variation across the 23 clones.
-*   **Mapping:** Diploid-aware "Haplotype-masked" alignment strategy.
-*   **Variant Calling:** Somatic SNP (`bcftools`) and SV (`Sniffles2`) identification.
-*   **Phylogeny:** Reconstruction of clonal lineages using a Haploid Genomic Relationship Matrix (GRM) in R.
-
-### 3. [Methylation Analysis](./3_Methylation_Analysis)
-The custom pipeline to process the raw nanopore 5mC data and downstream analyses.
-*   **Processing:** `modkit` pileup, context splitting, and standardization.
-*   **Population Epigenetics:** Identification of Differentially Methylated Cytosines (DMCs).
-*   **Gene Regulation:** Statistical classification of Gene Body Methylation (gbM) states and detection of epigenetic shifting.
+This repository contains all custom code and analysis pipelines developed for the study *"A dual genome-methylome map of clonal evolution in grapevine"*. The study generates a phased diploid reference genome for Pinot noir and integrates it with Oxford Nanopore sequencing of 23 distinct clones to build a genome-wide map of clonal genetic and DNA methylation variation in *Vitis vinifera*.
 
 ---
 
-## 🚀 Getting Started
+## Repository Structure
 
-### Prerequisites
-The pipelines rely on standard bioinformatics tools and Python/R environments.
+The repository is organised into five directories following the logical flow of the manuscript.
 
-**Core Tools:**
-*   `samtools`, `bcftools`, `bedtools`
-*   `minimap2`
-*   `modkit` (Nanopore methylation)
-*   `Sniffles2` (Structural Variants)
+### [1. Genome Assembly](./1_Genome_Assembly)
+Scripts for characterising the diploid reference genome structure, annotation, and epigenomic landscape.
 
-**Python Dependencies:**
+### [2. Clonal Diversity](./2_Clonal_Diversity)
+The full pipeline for mapping, somatic variant calling (SNPs and SVs), functional annotation, mechanistic classification, and clonal lineage reconstruction across the 23 clones.
+
+### [3. Methylation Analysis](./3_Methylation_Analysis)
+The complete methylation analysis pipeline, split into two parts:
+- **MP_Calling/** — processing raw Nanopore methylation data into methylation polymorphisms (MPs)
+- **GBM/** — gene body methylation classification, shifting gene detection, and GO enrichment
+
+### [4. Validation](./4_Validation)
+Validation analyses added during peer review: ONT vs PacBio HiFi methylome concordance, and quantitative assessment of the haplotype-masking strategy.
+
+### [5. Genetic-Methylation Interplay](./5_Genetic_Methylation_Interplay)
+Analyses of the relationship between genetic and epigenetic variation: MP-variant cis-associations and 5mC deamination contribution to somatic mutagenesis.
+
+---
+
+## Data Availability
+
+- **Raw sequencing data:** European Nucleotide Archive (ENA), project accession [PRJEB106155](https://www.ebi.ac.uk/ena/browser/view/PRJEB106155)
+- **Genome assembly, annotations, and methylation data:** [Zenodo record 18154549](https://zenodo.org/records/18154549)
+
+---
+
+## Dependencies
+
+**Core bioinformatics tools:**
+`samtools`, `bcftools`, `bedtools`, `minimap2`, `modkit`, `Sniffles2`, `SnpEff`, `BLAST+`, `deepTools`, `SyRI`, `Helixer`, `Liftoff`, `Mikado`, `EDTA`, `OrthoFinder`, `Tandem Repeats Finder`
+
+**Python (v3.11+):**
 ```bash
-pip install pandas numpy scipy intervaltree pybedtools argparse
+pip install pandas numpy scipy intervaltree pybedtools matplotlib seaborn statsmodels
 ```
-**R Dependencies:**
+
+**R (v4.2+):**
 ```R
-install.packages(c("ape", "vegan", "pheatmap", "dendextend", "RColorBrewer"))
+install.packages(c("ape", "vegan", "pheatmap", "dendextend", "RColorBrewer", "ggplot2"))
 ```
 
 ---
 
-## 💾 Data Availability
-*  **Raw Sequencing Data:** Available at the European Nucleotide Archive (ENA) under project PRJEB106155.
-*  **Assembly & Annotations:** The phased diploid assembly (PN_1 and PN_2) and GFF3 files are available at https://zenodo.org/records/18154549.
-*  **Modified PlotSR:** The custom visualization tool used for Figure 2 is included in 1_Assembly_Evaluation/plotsr_modified.
+## Contact
 
----
-
-## 📞 Contact
-If you have questions regarding the code or the analysis workflow, please open an Issue in this repository or contact: paolo.callipo@hs-gm.de
+For questions about the code or analysis workflow, please open an Issue or contact: paolo.callipo@hs-gm.de

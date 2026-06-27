@@ -1,112 +1,175 @@
-# Methylation Analysis Pipeline
+# 3. Methylation Analysis
 
-This directory contains the computational workflow used to characterize the methylation landscape of the 23 Pinot Noir clones. 
-The pipeline processes Nanopore methylation data to identify **Differentially Methylated Cytosines (DMCs)**, analyze **Gene Body Methylation (gbM)** dynamics, and generate the data matrices required for clonal lineage reconstruction.
-
-## Dependencies
-
-*   **Bioinformatics Tools:**
-    *   `modkit` (Nanopore modification calling)
-    *   `samtools`
-*   **Python Libraries:**
-    *   `pandas`, `numpy`, `scipy`
-    *   `intervaltree`, `argparse`
+The complete methylation analysis pipeline, from raw Nanopore data to methylation polymorphisms (MPs) and gene body methylation (GBM) classification. Organised into two subdirectories.
 
 ---
 
-## 1. Methylation Calling & Extraction
+## MP_Calling/
 
-### `run_modkit_pileup.sh`
-**Description:**  
-A SLURM submission script that runs `modkit` on aligned BAM files (containing MM/ML tags) to extract 5mC probabilities and prepare the bedMethyl files for each context for downstream analysis.
-*   **Output:** Generates a genome-wide pileup bedMethyl file and automatically splits it into context-specific files (`CG`, `CHG`, `CHH`) for downstream processing.
-*   **Reference:** Requires the diploid reference FASTA.
+Pipeline for identifying methylation polymorphisms (MPs) across the 23-clone panel using a binned, binarise-first approach. Run scripts in numbered order.
 
-**Usage:**
+### Dependencies
+**Tools:** `modkit`  
+**Python 3.8+:** `pandas`, `numpy`, `intervaltree`
+
+---
+
+### `00_methylation_distributions.py`
+Samples up to 2 million sites per clone (post coverage filter ≥4×) and plots genome-wide methylation density curves for CG, CHG, and CHH contexts. Used to derive the context-specific binarization thresholds empirically (Figure S18).
+
 ```bash
-sbatch run_modkit_pileup.sh SampleID ./bam_dir reference.fasta ./meth_out
+python 00_methylation_distributions.py \
+    --cg-dir ./pileup/CG \
+    --chg-dir ./pileup/CHG \
+    --chh-dir ./pileup/CHH \
+    --output methylation_distributions.pdf
 ```
-## 2. Data Standardization & Binarization
-### `process_methylation_bed.py`
-**Description:**
-Parses raw modkit BED files to standardize calls.
-CG/CHG Contexts: Merges symmetrical sites from the forward (+) and reverse (-) strands into a single high-confidence call per site using weighted averages. Unpaired sites are discarded to ensure robustness.
-CHH Context: Extracts relevant data without merging (as CHH is asymmetric).
-**Usage:**
-```Bash
-python process_methylation_bed.py raw_CG.bed merged_CG.bed --context CG
-```
-### `binarize_methylation.py`
-**Description:**
-Converts continuous methylation percentages into discrete binary states to create an "Epigenetic Genotype" for phylogenetic analysis.
-0 (Unmethylated): Methylation level ≤30%
-1 (Methylated): Methylation level ≥70%
-. (Missing): Sites with low coverage (< 4x) or intermediate methylation (30-70%) because considered ambigous.
-**Usage:**
-```Bash
-python binarize_methylation.py merged_CG.bed binary_CG.tsv --min-cov 4 --low 30 --high 70
-```
-## 3. Population Matrix Generation
-###  `merge_methylation_matrix.py`
-**Description:**
-Aggregates the individual binarized files from all 23 clones into a single Population Matrix (Rows = CpG Sites, Columns = Clones).
-Method: Performs an Outer Join on site IDs. Missing data (where a site is covered in some clones but not others) is filled with . values.
-**Usage:**
-```Bash
-python merge_methylation_matrix.py population_matrix_CG.tsv *_CG_binary.tsv
-```
-### `filter_methylation_matrix.py`
-**Description:**
-Filters the raw population matrix to retain only informative Differentially Methylated Cytosines (DMCs).
-Missingness Filter: Removes sites with >10% missing data across the population.
-MAF Filter: Removes invariant sites and rare variants (Minor Allele Frequency < 0.05).
-Output: This filtered matrix is the direct input for the Clonal Lineage Reconstruction (Folder 2).
-**Usage:**
-```Bash
-python filter_methylation_matrix.py population_matrix_CG.tsv filtered_DMCs.tsv --missing 0.1 --maf 0.05
-```
-## 4. Genomic Distribution & Statistics
-### `calc_maf_spectrum.py`
-**Description:**
-Calculates the Minor Allele Frequency (MAF) for every site in the matrix. The output is used to generate Site Frequency Spectrum (SFS) plots (Figure 5A) to compare the evolutionary stability of CG vs. non-CG methylation.
-**Usage:**
-```Bash
-python calc_maf_spectrum.py filtered_DMCs.tsv maf_results.tsv
-```
-### `calc_dmc_density.py`
-**Description:**
-Calculates the genomic density of DMCs (events per 100kb) across Exons, Introns, and Intergenic regions. It uses interval trees to map DMCs to features, prioritizing coding regions (Exon > Intron > Intergenic).
-**Usage:**
 
-```Bash
-python calc_dmc_density.py \
-    --dmcs filtered_DMCs.tsv \
-    --exons exons.bed --introns introns.bed --intergenic intergenic.bed \
+---
+
+### `01_parse_modkit.py`
+Parses raw modkit bedMethyl files. For each context (CG, CHG, CHH), extracts Nmod and Nvalid counts. Merges symmetrical strand pairs for CG and CHG (1bp offset for CHG). CHH sites are written directly without merging.
+
+```bash
+python 01_parse_modkit.py input.bedMethyl output_prefix
+# Produces: output_prefix.CG.bed, output_prefix.CHG.bed, output_prefix.CHH.bed
+```
+
+---
+
+### `02_bin_methylation.py`
+Aggregates per-site methylation counts from `01_parse_modkit.py` into fixed-size non-overlapping genomic bins. For each bin, sums Nmod and Nvalid across all cytosines and computes mean methylation percentage.
+
+```bash
+python 02_bin_methylation.py \
+    sample.CG.bed \
+    genome.chrom.sizes \
+    sample.CG.bins.bed \
+    --bin_size 200 \
+    --min_sites 3
+```
+
+---
+
+### `03_build_matrix.py`
+Core MP calling script. Loads binned methylation files from all clones, applies coverage and missingness filters, binarizes each bin using context-specific thresholds (CG: <30%/≥70%; CHG: <25%/≥50%; CHH: <5%/≥15%), and identifies MPs as bins exhibiting both methylated and unmethylated states across the panel.
+
+```bash
+python 03_build_matrix.py \
+    --binned_dir ./02_binned \
+    --context CG \
+    --output_prefix ./03_matrix/CG
+```
+
+---
+
+### `04_calc_mp_maf.py`
+Calculates the Minor Epiallele Frequency (MEF) for every MP in the binary matrix output of `03_build_matrix.py`. Used to generate the MEF site frequency spectra (Figure 5A).
+
+```bash
+python 04_calc_mp_maf.py CG.vmr.binary.tsv CG.maf.tsv
+```
+
+---
+
+### `05_calc_mp_density.py`
+Calculates MP rate (MP bins / callable bins) per genomic feature (Exon, Intron, Intergenic) for each chromosome. Uses majority overlap (>50%) for feature assignment with priority: Exon > Intron > Intergenic.
+
+```bash
+python 05_calc_mp_density.py \
+    --continuous CG.continuous.tsv \
+    --vmrs CG.vmr.binary.tsv \
+    --exons exons.bed \
+    --introns introns.bed \
+    --intergenic intergenic.bed \
     --fai genome.fasta.fai \
-    --output dmc_density_stats.tsv
+    --output CG.mp_rate.tsv
 ```
-## 5. Gene Body Methylation (gbM) Analysis
-###  `GBM_calc.py`
-**Description:**
-Performs the statistical classification of Gene Body Methylation (gbM) states for the entire cohort.
-Calculates a clone-specific global methylation background (_pCG_).
-Performs a Binomial Test for every gene to determine if it is significantly methylated (BM) or undermethylated (UM) compared to the background.
-Generates summary matrices (Class Matrix and P-value Matrix) for all clones.
-**Usage:**
-```Bash
-python GBM_calc.py \
-    genes.bed \
-    --clone "Clone_20-13=path/to/20-13_CG.bed" \
-    --clone "Clone_Ab48=path/to/Ab48_CG.bed" \
-    --outdir gbm_results \
-    --format percent
+
+---
+
+## GBM/
+
+Gene body methylation classification, shifting gene detection, allele-specific methylation analysis, and GO enrichment.
+
+### Dependencies
+**Python 3.8+:** `pandas`, `numpy`, `scipy`, `matplotlib`, `seaborn`, `statsmodels`  
+**External:** eggNOG-mapper annotations for GO enrichment; `go-basic.obo` (optional, for GO term labels)
+
+---
+
+### `genomic_cg_per_gene.py`
+Counts CpG dinucleotides and CG% per gene from the genome FASTA and an exon BED file. Calculates genomic CG content independently of methylation calling, used to determine which genes have sufficient cytosine density for classification.
+
+```bash
+python genomic_cg_per_gene.py genome.fasta exons.bed --output cg_per_gene.tsv
 ```
-###  `analyze_gbm_stability.py`
-**Description:**
-Analyzes the stability of epigenetic states across the population using the output from GBM_calc.py.
-gbM Shift: Identifies genes that switch states (e.g., BM in one clone, UM in another).
-Stability Metrics: Calculates the fraction of clones holding a specific state per gene.
-**Usage:**
-```Bash
-python analyze_gbm_stability.py gbm_results/gbm_class_matrix.tsv --output gbm_stability_report.tsv
+
+### `GBM_classify_CG_CHG.py`
+Classifies genes as **gbM** (gene-body methylated), **teM** (TE-like methylation), **UM** (unmethylated), or **Unclassified** using CG and CHG contexts only (CHH excluded due to ONT noise). Uses a one-sided binomial test against a per-clone genome-wide CDS background (pCG), with BH-FDR correction.
+
+Classification logic:
+- **teM**: CHG significantly above background AND CHG fraction ≥ threshold
+- **gbM**: CG significant AND not teM AND sufficient CG/CHG coverage
+- **UM**: CG not significant AND not teM AND CG fraction ≤ effect-size guard
+
+```bash
+python GBM_classify_CG_CHG.py \
+    genes_cds.bed cg.bed chg.bed output_prefix \
+    --min-n-cg 15 --min-n-chg 15 --format percent
+```
+
+### `GBM_classify_multiclone.py`
+Driver script that runs `GBM_classify_CG_CHG.py` independently on each clone from a sample sheet, then merges per-clone results into a single wide table. Each clone uses its own per-clone background (pCG) to avoid bias from global methylation drift.
+
+```bash
+python GBM_classify_multiclone.py \
+    samples.tsv genes_cds.bed ./gbm_output \
+    --min-n-cg 15 --min-n-chg 15 --format percent --threads 4
+```
+
+Sample sheet format (tab-separated): `clone_name  cg_file  chg_file`
+
+### `call_switching_genes.py`
+Identifies genes that shift methylation state (gbM/teM/UM) across clones using conservative criteria: classified in ≥N clones, minority class supported by ≥2 clones, and effect-size guards on CG and CHG fraction differences between class groups.
+
+```bash
+python call_switching_genes.py ./gbm_output \
+    --min-minority 2 --delta-cg 0.30 --delta-chg 0.10
+```
+
+### `go_enrichment.py`
+GO enrichment analysis for shifting genes using Fisher's exact test with BH FDR correction. Reads eggNOG-mapper annotations and optionally a `go-basic.obo` file for GO term labels. Tests all shifting genes and key transition subsets (gbM↔teM, UM↔teM).
+
+```bash
+python go_enrichment.py \
+    --emapper grapevine.emapper.annotations \
+    --classification 20-13_classification.tsv \
+    --switching switching_genes.tsv \
+    --obo go-basic.obo \
+    --outdir ./go_results
+```
+
+### `plot_cg_chg_scatter.py`
+Generates a CG vs CHG methylation scatter plot with marginal histograms, coloured by classification (gbM/teM/UM/ambiguous). Used for QC and Figure S9.
+
+```bash
+python plot_cg_chg_scatter.py per_clone/20-13_classification.tsv \
+    --output 20-13_scatter.png --min-n-cg 15 --min-n-chg 15
+```
+
+### `ortho_concordance.py`
+Analyses methylation state concordance between the two haplotypes for 1-to-1 ortholog pairs. Produces a concordance heatmap and CG/CHG scatter panels (Figure S10).
+
+```bash
+python ortho_concordance.py
+# Expects: one_to_one_orthologs.tsv, 20-13_classification.tsv
+```
+
+### `plot_AMP_bodies.py`
+Visualises the gene-body methylation states of the 1,240 asymmetrically methylated promoter pairs (AMPs). Produces CG and CHG scatter plots and a categorical bar chart of gene-body outcomes (Figure S13).
+
+```bash
+python plot_AMP_bodies.py
+# Expects: 20-13_classification.tsv, significant_AMPs.tsv
 ```

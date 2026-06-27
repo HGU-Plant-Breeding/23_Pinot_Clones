@@ -9,8 +9,8 @@ Description: Performs a Permutation (Monte Carlo) test to evaluate the statistic
              are sampled *from* this file, ensuring the background model is biologically 
              relevant (e.g., "only selecting from heterozygous promoters", not the whole genome).
 
-Author: [Your Name/Lab Name]
-Date: 2024
+Author: Paolo Callipo
+Date: 2026
 Dependencies: python3, pandas, pybedtools (requires bedtools in PATH)
 """
 
