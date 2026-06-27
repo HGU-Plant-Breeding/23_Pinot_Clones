@@ -61,3 +61,7 @@ install.packages(c("ape", "vegan", "pheatmap", "dendextend", "RColorBrewer", "gg
 ## Contact
 
 For questions about the code or analysis workflow, please open an Issue or contact: paolo.callipo@hs-gm.de
+
+## lICENSE
+
+MIT License
